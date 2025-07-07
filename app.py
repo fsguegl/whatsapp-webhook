@@ -27,14 +27,23 @@ def send_auto_reply(to):
         "Authorization": f"Bearer {API_TOKEN}",
         "Content-Type": "application/json"
     }
+
     payload = {
+        "messaging_product": "whatsapp",
         "to": to,
-        "type": "text",
-        "text": {
-            "body": "Questo numero è abilitato solo alle comunicazioni in uscita."
+        "type": "template",
+        "template": {
+            "name": "risposta_automatica",
+            "language": {
+                "code": "it"
+            }
         }
     }
-    requests.post(WHATSAPP_API_URL, json=payload, headers=headers)
+
+    response = requests.post(WHATSAPP_API_URL, json=payload, headers=headers)
+
+    print("Status code:", response.status_code)
+    print("Response:", response.text)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
