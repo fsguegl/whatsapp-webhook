@@ -1,6 +1,6 @@
+import os
 from flask import Flask, request, jsonify
 import requests
-import os
 
 app = Flask(__name__)
 
@@ -14,6 +14,7 @@ def health():
 @app.route("/webhook", methods=["POST"])
 def receive_message():
     data = request.get_json()
+    print("Webhook triggered. Payload received:", data)  # 🔍 DEBUG
     messages = data.get("messages", [])
     if messages:
         for message in messages:
