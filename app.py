@@ -33,22 +33,24 @@ def webhook():
     logging.info(f"📱 Numero WhatsApp: {phone_number}")
 
     # Invia il template "risposta_automatica"
-    headers = {
-        "Authorization": f"Bearer {API_TOKEN}",
-        "Content-Type": "application/json"
-    }
+ headers = {
+    "D360-API-KEY": API_TOKEN,
+    "Content-Type": "application/json"
+}
 
-    payload = {
-        "to": phone_number,
-        "type": "template",
-        "template": {
-            "namespace": "your_template_namespace",  # <-- AGGIORNA QUI se necessario
-            "name": "risposta_automatica",
-            "language": {
-                "code": "it"
-            }
+payload = {
+    "to": phone_number,
+    "type": "template",
+    "template": {
+        "namespace": "your_template_namespace",  # <-- aggiorna se serve
+        "name": "risposta_automatica",
+        "language": {
+            "code": "it"
         }
     }
+}
+
+response = requests.post(WHATSAPP_API_URL, headers=headers, json=payload)
 
     try:
         response = requests.post(WHATSAPP_API_URL, headers=headers, json=payload)
