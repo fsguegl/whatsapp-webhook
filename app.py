@@ -14,12 +14,15 @@ def health():
 @app.route("/webhook", methods=["POST"])
 def receive_message():
     try:
-        data = request.get_json()
-        print("✅ Payload ricevuto:", data)
+        raw_data = request.data
+        print("📦 Corpo grezzo ricevuto:", raw_data)
+
+        data = request.get_json(silent=True)
+        print("✅ Payload JSON decodificato:", data)
 
         if not data:
-            print("❌ Nessun dato JSON ricevuto.")
-            return jsonify({"error": "No data received"}), 400
+            print("❌ Nessun dato JSON valido.")
+            return jsonify({"error": "No JSON received"}), 400
 
         messages = data.get("messages", [])
         print(f"📩 Messaggi trovati: {messages}")
@@ -54,9 +57,13 @@ def send_auto_reply(to):
         }
     }
 
-    response = requests.post(WHATSAPP_API_URL, json=payload, headers=headers)
-    print(f"📤 Inviato a {to} | Status: {response.status_code}")
-    print("📨 Risposta:", response.text)
+    try:
+        response = requests.post(WHATSAPP_API_URL, json=payload, headers=headers)
+        print("📤 Inviato a:", to)
+        print("🔁 Status code:", response.status_code)
+        print("📨 Risposta API:", response.text)
+    except Exception as e:
+        print("❌ Errore nell'invio del messaggio:", str(e))
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
