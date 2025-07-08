@@ -3,13 +3,12 @@ import sys
 import requests
 from flask import Flask, request, jsonify
 
-# Forza la stampa immediata nel log Render
 sys.stdout.reconfigure(line_buffering=True)
 
 app = Flask(__name__)
 
 WHATSAPP_API_URL = "https://waba-v2.360dialog.io/messages"
-API_TOKEN = os.getenv("WHATSAPP_API_TOKEN")  # Ricordati di aggiornarlo in Render
+API_TOKEN = os.getenv("WHATSAPP_API_TOKEN")
 
 @app.route("/", methods=["GET"])
 def health():
@@ -21,19 +20,25 @@ def receive_message():
     print("📥 Ricevuto messaggio:", data, flush=True)
 
     try:
-        contacts = data.get("contacts", [])
         messages = data.get("messages", [])
-        if contacts and messages:
-            wa_id = contacts[0].get("wa_id")
+        contacts = data.get("contacts", [])
+
+        # Fallback: se contacts mancante, prova a usare messages[0]["from"]
+        if messages:
+            if contacts:
+                wa_id = contacts[0].get("wa_id")
+            else:
+                wa_id = messages[0].get("from")
+
             if wa_id:
-                print(f"➡️ Invio risposta automatica a: {wa_id}", flush=True)
+                print(f"➡️ Invio template a: {wa_id}", flush=True)
                 send_auto_reply(wa_id)
             else:
-                print("⚠️ wa_id mancante nei contatti", flush=True)
+                print("⚠️ Impossibile determinare wa_id", flush=True)
         else:
-            print("⚠️ Contatti o messaggi mancanti nel payload", flush=True)
+            print("⚠️ Nessun messaggio ricevuto", flush=True)
     except Exception as e:
-        print("❌ Errore nel parsing del messaggio:", str(e), flush=True)
+        print("❌ Errore durante la gestione del messaggio:", str(e), flush=True)
 
     return jsonify({"status": "received"}), 200
 
@@ -56,7 +61,7 @@ def send_auto_reply(to):
     }
 
     response = requests.post(WHATSAPP_API_URL, headers=headers, json=payload)
-    print("📤 Invio messaggio a:", to, flush=True)
+    print("📤 Messaggio inviato a:", to, flush=True)
     print("🔁 Status:", response.status_code, flush=True)
     print("📨 Response:", response.text, flush=True)
 
