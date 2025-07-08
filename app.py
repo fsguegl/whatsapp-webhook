@@ -1,49 +1,34 @@
+from flask import Flask, request
+import requests
 import os
 import logging
-from flask import Flask, request, jsonify
-import requests
 
 app = Flask(__name__)
-
-# Configurazione log
 logging.basicConfig(level=logging.INFO)
 
-# Costanti
-WHATSAPP_API_URL = "https://waba.360dialog.io/v1/messages"
-API_KEY = os.getenv("WHATSAPP_API_TOKEN")
-
-@app.route("/", methods=["GET"])
-def health():
-    return "Webhook OK", 200
+WHATSAPP_API_URL = "https://waba-v2.360dialog.io/messages"
+API_TOKEN = os.environ.get("WHATSAPP_API_TOKEN")  # <-- assicurati che la variabile sia corretta nel pannello Render
 
 @app.route("/webhook", methods=["POST"])
-def receive_message():
+def webhook():
     data = request.get_json()
-    logging.info("📩 Payload ricevuto: %s", data)
+    logging.info(f"📥 Payload ricevuto: {data}")
 
-    messages = data.get("messages", [])
-    contacts = data.get("contacts", [])
+    contacts = data.get("contacts")
+    messages = data.get("messages")
 
-    if messages and contacts:
-        for message in messages:
-            from_number = message.get("from")
-            logging.info("☎️ Numero WhatsApp: %s", from_number)
-            if from_number:
-                send_auto_reply(from_number)
-    else:
-        logging.warning("⚠️ Contatti o messaggi mancanti nel payload")
+    if not contacts or not messages:
+        logging.info("⚠️ Contatti o messaggi mancanti nel payload")
+        return "Missing fields", 200
 
-    return jsonify({"status": "received"}), 200
+    phone_number = contacts[0].get("wa_id")
+    if not phone_number:
+        logging.info("⚠️ Numero WhatsApp non trovato")
+        return "Missing phone number", 200
 
-def send_auto_reply(to):
-    headers = {
-        "D360-API-KEY": API_KEY,
-        "Content-Type": "application/json"
-    }
-
+    # Costruzione del corpo per invio template
     payload = {
-        "messaging_product": "whatsapp",
-        "to": to,
+        "to": phone_number,
         "type": "template",
         "template": {
             "name": "risposta_automatica",
@@ -53,11 +38,18 @@ def send_auto_reply(to):
         }
     }
 
-    response = requests.post(WHATSAPP_API_URL, headers=headers, json=payload)
+    headers = {
+        "D360-API-KEY": API_TOKEN,
+        "Content-Type": "application/json"
+    }
 
-    logging.info("📨 Inviato template a: %s", to)
-    logging.info("✅ Status: %s", response.status_code)
-    logging.info("📡 Response: %s", response.text)
+    logging.info(f"📤 Invio template a: {phone_number}")
+    response = requests.post(WHATSAPP_API_URL, json=payload, headers=headers)
+    logging.info(f"✅ Status: {response.status_code}")
+    logging.info(f"📬 Response: {response.text}")
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000, debug=True)
+    return "ok", 200
+
+@app.route("/", methods=["GET"])
+def index():
+    return "Webhook attivo 🚀", 200
