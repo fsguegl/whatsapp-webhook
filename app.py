@@ -1,6 +1,7 @@
 import os
-import requests
+import json
 from flask import Flask, request, jsonify
+import requests
 
 app = Flask(__name__)
 
@@ -13,31 +14,23 @@ def health():
 
 @app.route("/webhook", methods=["POST"])
 def receive_message():
+    raw_data = request.data
+    print("📦 Corpo grezzo ricevuto:", raw_data.decode("utf-8"))
+
     try:
-        raw_data = request.data
-        print("📦 Corpo grezzo ricevuto:", raw_data)
-
-        data = request.get_json(silent=True)
-        print("✅ Payload JSON decodificato:", data)
-
-        if not data:
-            print("❌ Nessun dato JSON valido.")
-            return jsonify({"error": "No JSON received"}), 400
+        data = json.loads(raw_data)
+        print("✅ Payload JSON decodificato:", json.dumps(data, indent=2))
 
         messages = data.get("messages", [])
-        print(f"📩 Messaggi trovati: {messages}")
-
-        for message in messages:
-            from_number = message.get("from")
-            print(f"➡️ Numero mittente: {from_number}")
-            if from_number:
-                send_auto_reply(from_number)
-
-        return jsonify({"status": "received"}), 200
-
+        if messages:
+            for message in messages:
+                from_number = message.get("from")
+                if from_number:
+                    send_auto_reply(from_number)
     except Exception as e:
-        print("❗ Errore durante la gestione del messaggio:", str(e))
-        return jsonify({"error": str(e)}), 500
+        print("❌ Errore nella gestione del messaggio:", str(e))
+
+    return jsonify({"status": "received"}), 200
 
 def send_auto_reply(to):
     headers = {
@@ -59,11 +52,9 @@ def send_auto_reply(to):
 
     try:
         response = requests.post(WHATSAPP_API_URL, json=payload, headers=headers)
-        print("📤 Inviato a:", to)
-        print("🔁 Status code:", response.status_code)
-        print("📨 Risposta API:", response.text)
+        print("📨 Risposta API:", response.status_code, response.text)
     except Exception as e:
-        print("❌ Errore nell'invio del messaggio:", str(e))
+        print("⚠️ Errore durante l'invio della risposta:", str(e))
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
