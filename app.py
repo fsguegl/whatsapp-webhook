@@ -1,9 +1,12 @@
 import os
-import json
+import logging
 from flask import Flask, request, jsonify
 import requests
 
 app = Flask(__name__)
+
+# Configura logging
+logging.basicConfig(level=logging.INFO)
 
 WHATSAPP_API_URL = "https://waba.360dialog.io/v1/messages"
 API_TOKEN = os.getenv("WHATSAPP_API_TOKEN")
@@ -14,22 +17,16 @@ def health():
 
 @app.route("/webhook", methods=["POST"])
 def receive_message():
-    raw_data = request.data
-    print("📦 Corpo grezzo ricevuto:", raw_data.decode("utf-8"))
-
-    try:
-        data = json.loads(raw_data)
-        print("✅ Payload JSON decodificato:", json.dumps(data, indent=2))
-
-        messages = data.get("messages", [])
-        if messages:
-            for message in messages:
-                from_number = message.get("from")
-                if from_number:
-                    send_auto_reply(from_number)
-    except Exception as e:
-        print("❌ Errore nella gestione del messaggio:", str(e))
-
+    data = request.get_json()
+    messages = data.get("messages", [])
+    if messages:
+        for message in messages:
+            from_number = message.get("from")
+            if from_number:
+                logging.info(f"Ricevuto messaggio da: {from_number}")
+                send_auto_reply(from_number)
+    else:
+        logging.info("Nessun messaggio ricevuto nel payload.")
     return jsonify({"status": "received"}), 200
 
 def send_auto_reply(to):
@@ -50,11 +47,11 @@ def send_auto_reply(to):
         }
     }
 
-    try:
-        response = requests.post(WHATSAPP_API_URL, json=payload, headers=headers)
-        print("📨 Risposta API:", response.status_code, response.text)
-    except Exception as e:
-        print("⚠️ Errore durante l'invio della risposta:", str(e))
+    response = requests.post(WHATSAPP_API_URL, json=payload, headers=headers)
+
+    logging.info(f"Invio messaggio a {to} - Status: {response.status_code}")
+    logging.info(f"Risposta API: {response.text}")
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+    # Attiva modalità debug
+    app.run(host="0.0.0.0", port=10000, debug=True)
