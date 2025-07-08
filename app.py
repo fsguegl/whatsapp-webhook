@@ -5,7 +5,7 @@ from flask import Flask, request, jsonify
 app = Flask(__name__)
 
 WHATSAPP_API_URL = "https://waba.360dialog.io/v1/messages"
-API_TOKEN = os.getenv("WHATSAPP_API_TOKEN")  # Assicurati che sia settato su Render
+API_TOKEN = os.getenv("WHATSAPP_API_TOKEN")
 
 @app.route("/", methods=["GET"])
 def health():
@@ -13,22 +13,28 @@ def health():
 
 @app.route("/webhook", methods=["POST"])
 def receive_message():
-    data = request.get_json()
-    print("✅ Webhook payload ricevuto:", data)  # DEBUG
+    try:
+        data = request.get_json()
+        print("✅ Payload ricevuto:", data)
 
-    messages = data.get("messages", [])
-    if messages:
+        if not data:
+            print("❌ Nessun dato JSON ricevuto.")
+            return jsonify({"error": "No data received"}), 400
+
+        messages = data.get("messages", [])
+        print(f"📩 Messaggi trovati: {messages}")
+
         for message in messages:
             from_number = message.get("from")
-            print("📩 Numero mittente:", from_number)  # DEBUG
+            print(f"➡️ Numero mittente: {from_number}")
             if from_number:
                 send_auto_reply(from_number)
-            else:
-                print("⚠️ 'from' mancante nel messaggio")  # DEBUG
-    else:
-        print("⚠️ Nessun messaggio trovato nel payload")  # DEBUG
 
-    return jsonify({"status": "received"}), 200
+        return jsonify({"status": "received"}), 200
+
+    except Exception as e:
+        print("❗ Errore durante la gestione del messaggio:", str(e))
+        return jsonify({"error": str(e)}), 500
 
 def send_auto_reply(to):
     headers = {
@@ -48,13 +54,9 @@ def send_auto_reply(to):
         }
     }
 
-    print("➡️ Inviando template a:", to)
-    print("📦 Payload:", payload)
-
     response = requests.post(WHATSAPP_API_URL, json=payload, headers=headers)
-
-    print("✅ Status code:", response.status_code)
-    print("📨 Risposta API:", response.text)
+    print(f"📤 Inviato a {to} | Status: {response.status_code}")
+    print("📨 Risposta:", response.text)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
