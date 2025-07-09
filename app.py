@@ -3,10 +3,12 @@ import sys
 import requests
 from flask import Flask, request, jsonify
 
+# Per log immediati su Render
 sys.stdout.reconfigure(line_buffering=True)
 
 app = Flask(__name__)
 
+# URL API WhatsApp 360dialog
 WHATSAPP_API_URL = "https://waba-v2.360dialog.io/messages"
 API_TOKEN = os.getenv("WHATSAPP_API_TOKEN")
 
@@ -20,10 +22,14 @@ def receive_message():
     print("📥 Ricevuto messaggio:", data, flush=True)
 
     try:
-        messages = data.get("messages", [])
-        contacts = data.get("contacts", [])
+        # Naviga correttamente la struttura di 360dialog
+        entry = data.get("entry", [])[0]
+        changes = entry.get("changes", [])[0]
+        value = changes.get("value", {})
 
-        # Fallback: se contacts mancante, prova a usare messages[0]["from"]
+        messages = value.get("messages", [])
+        contacts = value.get("contacts", [])
+
         if messages:
             if contacts:
                 wa_id = contacts[0].get("wa_id")
@@ -53,14 +59,15 @@ def send_auto_reply(to):
         "to": to,
         "type": "template",
         "template": {
-            "name": "risposta_automatica",
+            "name": "risposta_automatica",  # Sostituisci con il nome esatto del tuo template
             "language": {
-                "code": "it"
+                "code": "it"  # Codice lingua approvato per il template
             }
         }
     }
 
     response = requests.post(WHATSAPP_API_URL, headers=headers, json=payload)
+
     print("📤 Messaggio inviato a:", to, flush=True)
     print("🔁 Status:", response.status_code, flush=True)
     print("📨 Response:", response.text, flush=True)
