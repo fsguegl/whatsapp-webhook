@@ -3,12 +3,12 @@ import sys
 import requests
 from flask import Flask, request, jsonify
 
-# Per log immediati su Render
+# Log immediato su Render
 sys.stdout.reconfigure(line_buffering=True)
 
 app = Flask(__name__)
 
-# URL API WhatsApp 360dialog
+# Endpoint e token per 360dialog API
 WHATSAPP_API_URL = "https://waba-v2.360dialog.io/messages"
 API_TOKEN = os.getenv("WHATSAPP_API_TOKEN")
 
@@ -22,10 +22,13 @@ def receive_message():
     print("📥 Ricevuto messaggio:", data, flush=True)
 
     try:
-        # Naviga correttamente la struttura di 360dialog
-        entry = data.get("entry", [])[0]
-        changes = entry.get("changes", [])[0]
-        value = changes.get("value", {})
+        # Gestione dinamica: struttura standard o semplificata
+        if "entry" in data:
+            entry = data.get("entry", [])[0]
+            changes = entry.get("changes", [])[0]
+            value = changes.get("value", {})
+        else:
+            value = data  # fallback per struttura semplificata
 
         messages = value.get("messages", [])
         contacts = value.get("contacts", [])
@@ -42,7 +45,8 @@ def receive_message():
             else:
                 print("⚠️ Impossibile determinare wa_id", flush=True)
         else:
-            print("⚠️ Nessun messaggio ricevuto", flush=True)
+            print("⚠️ Nessun messaggio presente nel payload", flush=True)
+
     except Exception as e:
         print("❌ Errore durante la gestione del messaggio:", str(e), flush=True)
 
@@ -59,9 +63,9 @@ def send_auto_reply(to):
         "to": to,
         "type": "template",
         "template": {
-            "name": "risposta_automatica",  # Sostituisci con il nome esatto del tuo template
+            "name": "risposta_automatica",  # Cambia con il nome esatto del tuo template
             "language": {
-                "code": "it"  # Codice lingua approvato per il template
+                "code": "it"  # Lingua approvata per il template
             }
         }
     }
